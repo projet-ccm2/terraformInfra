@@ -1,10 +1,9 @@
 name: Deploy to Development
 
 on:
-  push:
-    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ dev ]
+    types: [ closed ] 
 
 env:
   PROJECT_ID: streamquest-dev
