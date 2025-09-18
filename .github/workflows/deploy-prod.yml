@@ -1,0 +1,72 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm production deployment'
+        required: true
+        default: ''
+
+env:
+  PROJECT_ID: streamquest-prod
+  REGION: europe-west1
+  REPO_ID: orders
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.0
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY_PROD }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Configure Docker for Artifact Registry
+      run: |
+        gcloud auth configure-docker europe-west1-docker.pkg.dev
+
+    - name: Build and push Docker images
+      run: |
+        # Build and push each service
+        for service in auth users orders; do
+          echo "Building $service..."
+          docker build -t europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/$service:$GITHUB_SHA \
+            -f ./services/$service/Dockerfile ./services/$service/
+          docker push europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/$service:$GITHUB_SHA
+        done
+
+    - name: Terraform Init
+      run: terraform init
+      working-directory: .
+
+    - name: Terraform Plan
+      run: terraform plan -var-file=env/prod.tfvars -var="services.auth.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/auth:$GITHUB_SHA" -var="services.users.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/users:$GITHUB_SHA" -var="services.orders.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/orders:$GITHUB_SHA"
+      working-directory: .
+
+    - name: Terraform Apply
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'deploy'
+      run: terraform apply -auto-approve -var-file=env/prod.tfvars -var="services.auth.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/auth:$GITHUB_SHA" -var="services.users.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/users:$GITHUB_SHA" -var="services.orders.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/orders:$GITHUB_SHA"
+      working-directory: .
+
+    - name: Output deployment URLs
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.confirm == 'deploy'
+      run: |
+        echo "Production deployment completed!"
+        echo "Service URLs:"
+        terraform output -json run_urls | jq -r 'to_entries[] | "\(.key): \(.value)"'

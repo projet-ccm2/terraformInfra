@@ -1,25 +1,22 @@
-resource "google_compute_network" "vpc_network" {
-  name                    = var.vpc_name
+resource "google_compute_network" "vpc" {
+  name                    = var.network_name
   auto_create_subnetworks = false
 }
 
+# One example subnet
 resource "google_compute_subnetwork" "subnet" {
-  name          = var.subnet_name
-  ip_cidr_range = var.subnet_cidr
-  region        = var.region
-  network       = google_compute_network.vpc_network.id
+  name          = "${var.network_name}-subnet"
+  ip_cidr_range = var.cidr_block
+  region        = "europe-west1"
+  network       = google_compute_network.vpc.id
+  private_ip_google_access = true
 }
 
-resource "google_compute_global_address" "private_ip_range" {
-  name          = "${var.vpc_name}-sql-range"
-  purpose       = "VPC_PEERING"
-  address_type  = "INTERNAL"
-  prefix_length = 16
-  network       = google_compute_network.vpc_network.id
-}
-
-resource "google_service_networking_connection" "private_vpc_connection" {
-  network                 = google_compute_network.vpc_network.id
-  service                 = "servicenetworking.googleapis.com"
-  reserved_peering_ranges = [google_compute_global_address.private_ip_range.name]
+resource "google_vpc_access_connector" "connector" {
+  name          = "${var.network_name}-connector"
+  region        = "europe-west1"
+  network       = google_compute_network.vpc.name
+  ip_cidr_range = "10.8.0.0/28"
+  min_instances = 2
+  max_instances = 3
 }
