@@ -2,8 +2,8 @@ name: Deploy to Development
 
 on:
   pull_request:
-    #branches: [ dev ]
-    #types: [ closed ] 
+    branches: [ dev ]
+
 
 env:
   PROJECT_ID: streamquest-dev
@@ -13,7 +13,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -28,38 +28,21 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY_DEV }}
 
-    - name: Set up Cloud SDK
-      uses: google-github-actions/setup-gcloud@v2
-
-    - name: Configure Docker for Artifact Registry
-      run: |
-        gcloud auth configure-docker europe-west1-docker.pkg.dev
-
-    - name: Build and push Docker images
-      run: |
-        # Build and push each service
-        for service in auth users orders; do
-          echo "Building $service..."
-          docker build -t europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/$service:$GITHUB_SHA \
-            -f ./services/$service/Dockerfile ./services/$service/
-          docker push europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/$service:$GITHUB_SHA
-        done
-
     - name: Terraform Init
       run: terraform init
       working-directory: .
 
     - name: Terraform Plan
-      run: terraform plan -var-file=env/dev.tfvars -var="services.auth.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/auth:$GITHUB_SHA" -var="services.users.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/users:$GITHUB_SHA" -var="services.orders.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/orders:$GITHUB_SHA"
+      run: |
+        terraform plan -var-file=env/dev.tfvars
       working-directory: .
 
     - name: Terraform Apply
-      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-      run: terraform apply -auto-approve -var-file=env/dev.tfvars -var="services.auth.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/auth:$GITHUB_SHA" -var="services.users.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/users:$GITHUB_SHA" -var="services.orders.image=europe-west1-docker.pkg.dev/$PROJECT_ID/$REPO_ID/orders:$GITHUB_SHA"
+      run: |
+        terraform apply -auto-approve -var-file=env/dev.tfvars
       working-directory: .
 
     - name: Output deployment URLs
-      if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
       run: |
         echo "Deployment completed!"
         echo "Service URLs:"
