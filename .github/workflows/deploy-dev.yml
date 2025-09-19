@@ -32,13 +32,6 @@ jobs:
       run: terraform init
       working-directory: .
 
-    - name: Verify env files
-      run: |
-        pwd
-        ls -la
-        ls -la env || true
-        test -f env/dev.tfvars
-
     - name: Terraform Plan
       run: |
         terraform plan -var-file=env/dev.tfvars
