@@ -15,9 +15,3 @@ db = {
   version       = "MYSQL_8_0"
   tier          = "db-custom-1-3840"
 }
-
-services = {
-  auth    = { image = "europe-west1-docker.pkg.dev/streamquest-prod/auth:v1", allow_unauthenticated = false }
-  users   = { image = "europe-west1-docker.pkg.dev/streamquest-prod/users:v1", allow_unauthenticated = false }
-  orders  = { image = "europe-west1-docker.pkg.dev/streamquest-prod/orders:v1", allow_unauthenticated = false }
-}

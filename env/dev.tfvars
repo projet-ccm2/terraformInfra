@@ -16,8 +16,3 @@ db = {
   tier          = "db-custom-1-3840"
 }
 
-services = {
-  auth    = { image = "europe-west1-docker.pkg.dev/streamquest-dev/auth:v1", allow_unauthenticated = false }
-  users   = { image = "europe-west1-docker.pkg.dev/streamquest-dev/users:v1", allow_unauthenticated = false }
-  orders  = { image = "europe-west1-docker.pkg.dev/streamquest-dev/orders:v1", allow_unauthenticated = false }
-}
