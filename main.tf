@@ -35,7 +35,6 @@ module "bucket" {
 }
 
 module "run" {
-  for_each = var.services
   source   = "./modules/cloud_run"
 
   project_id = var.project_id
