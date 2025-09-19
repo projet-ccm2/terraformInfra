@@ -41,8 +41,6 @@ module "run" {
   region     = var.region
 
   service_name          = each.key
-  image                 = each.value.image
-  allow_unauthenticated = each.value.allow_unauthenticated
 
   instance_connection_name   = module.db.connection_name
   db_user                    = var.db.db_user
