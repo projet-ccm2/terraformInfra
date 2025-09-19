@@ -41,9 +41,3 @@ jobs:
       run: |
         terraform apply -auto-approve -var-file=env/dev.tfvars
       working-directory: .
-
-    - name: Output deployment URLs
-      run: |
-        echo "Deployment completed!"
-        echo "Service URLs:"
-        terraform output -json run_urls | jq -r 'to_entries[] | "\(.key): \(.value)"'

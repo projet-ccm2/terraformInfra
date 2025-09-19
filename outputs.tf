@@ -1,6 +1,3 @@
-output "run_urls" {
-  value = { for k, v in module.run : k => v.url }
-}
 output "ar_repo_url" {
   value = module.ar.repo_url
 }

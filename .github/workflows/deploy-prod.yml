@@ -40,10 +40,3 @@ jobs:
       run: |
         terraform apply -auto-approve -var-file=env/prod.tfvars
       working-directory: .
-
-    - name: Output deployment URLs
-      if: github.event.inputs.confirm == 'deploy'
-      run: |
-        echo "Production deployment completed!"
-        echo "Service URLs:"
-        terraform output -json run_urls | jq -r 'to_entries[] | "\(.key): \(.value)"'
