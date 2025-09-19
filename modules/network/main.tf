@@ -3,7 +3,6 @@ resource "google_compute_network" "vpc" {
   auto_create_subnetworks = false
 }
 
-# One example subnet
 resource "google_compute_subnetwork" "subnet" {
   name          = "${var.network_name}-subnet"
   ip_cidr_range = var.cidr_block
