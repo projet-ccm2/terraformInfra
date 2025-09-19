@@ -1,5 +1,9 @@
 name: Deploy to Development
 
+concurrency:
+  group: terraform-dev-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
@@ -29,17 +33,19 @@ jobs:
         credentials_json: ${{ secrets.GCP_SA_KEY_DEV }}
 
     - name: Terraform Init
-      run: terraform init
+      run: terraform init -reconfigure \
+        -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+        -backend-config="prefix=streamquest/dev"
       working-directory: .
 
     - name: Terraform Plan
       run: |
-        terraform plan -var-file=env/dev.tfvars
+        terraform plan -lock-timeout=5m -var-file=env/dev.tfvars
       working-directory: .
 
     - name: Terraform Apply
       run: |
-        terraform apply -auto-approve -var-file=env/dev.tfvars
+        terraform apply -lock-timeout=5m -auto-approve -var-file=env/dev.tfvars
       working-directory: .
 
     - name: Terraform Destroy on failure
