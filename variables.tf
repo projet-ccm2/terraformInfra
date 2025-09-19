@@ -39,12 +39,6 @@ variable "db" {
   })
 }
 
-variable "services" {
-  type = map(object({
-    image                 = string
-    allow_unauthenticated = bool
-  }))
-}
 
 variable "env" {
   type    = string
