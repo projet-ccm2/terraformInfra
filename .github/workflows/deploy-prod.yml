@@ -10,7 +10,7 @@ env:
   REPO_ID: orders
 
 jobs:
-  deploy:
+  deploy-prod:
     runs-on: ubuntu-latest
     
     steps:
@@ -30,6 +30,13 @@ jobs:
     - name: Terraform Init
       run: terraform init
       working-directory: .
+
+    - name: Verify env files
+      run: |
+        pwd
+        ls -la
+        ls -la env || true
+        test -f env/prod.tfvars
 
     - name: Terraform Plan
       run: |
