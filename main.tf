@@ -34,18 +34,3 @@ module "bucket" {
   depends_on   = [module.apis]
 }
 
-module "run" {
-  source   = "./modules/cloud_run"
-
-  project_id = var.project_id
-  region     = var.region
-
-  service_name          = each.key
-
-  instance_connection_name   = module.db.connection_name
-  db_user                    = var.db.db_user
-  db_name                    = var.db.db_name
-  db_password                = var.db.db_password
-  vpc_connector_name         = module.vpc_network.vpc_connector_name
-  depends_on                 = [module.apis, module.db, module.vpc_network]
-}
