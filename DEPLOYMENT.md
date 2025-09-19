@@ -82,12 +82,11 @@ services/
 ## Déploiement
 
 ### Développement (Automatique)
-- Push sur `main` ou `develop` → Déploiement automatique
-- Pull Request → Plan Terraform uniquement
+- Lancer le workflow "Deploy to Development" via Run workflow avec 3 inputs:
+  - auth_image, users_image, orders_image (images déjà poussées dans Artifact Registry)
 
 ### Production (Manuel)
-- Tag `v*` → Plan Terraform
-- Workflow Dispatch avec confirmation → Déploiement
+- Lancer "Deploy to Production" via Run workflow avec les 3 inputs d'images et `confirm=deploy`
 
 ## Configuration Backend
 
@@ -176,3 +175,13 @@ terraform state list
 # Importer une ressource existante
 terraform import google_cloud_run_service.svc projects/PROJECT/locations/REGION/services/NAME
 ```
+
+## Exemple d'application Cloud Run (optionnel)
+
+Un exemple minimal est fourni dans `examples/hello-run` avec un `Dockerfile` et un `server.js` Node.js.
+
+Workflow pour builder/pusher l'image:
+```
+.github/workflows/example-build.yml
+```
+Exécution via Run workflow avec `project_id` et `repo_id`. L'image produite pourra être passée en entrée à `Deploy to Development/Production`.
