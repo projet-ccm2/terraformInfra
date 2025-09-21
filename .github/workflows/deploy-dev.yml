@@ -5,7 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  merge:
+  push:
     branches:
       - develop
 
