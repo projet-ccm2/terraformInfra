@@ -214,3 +214,27 @@ Workflow pour builder/pusher l'image:
 .github/workflows/example-build.yml
 ```
 Exécution via Run workflow avec `project_id` et `repo_id`. L'image produite pourra être passée en entrée à `Deploy to Development/Production`.
+
+### Déployer un microservice Cloud Run (exemple complet)
+
+Un Terraform autonome pour un service Cloud Run v2 est fourni dans `examples/hello-run/terraform`. Un workflow GitHub permet de:
+
+- Builder et pousser l'image dans Artifact Registry
+- Déployer le service Cloud Run en attachant le VPC Connector si fourni
+- Conserver l'état Terraform dans le bucket partagé
+
+Workflow:
+```
+.github/workflows/example-deploy.yml
+```
+Exécuter via “Run workflow” avec:
+- `project_id`: ID du projet GCP (ex: streamquest-472309)
+- `region`: ex: europe-west1
+- `repo_id`: dépôt Artifact Registry (ex: orders)
+- `service_name`: nom du service (ex: hello-run)
+- `allow_unauthenticated`: true/false
+- `ingress`: INGRESS_TRAFFIC_ALL | INGRESS_TRAFFIC_INTERNAL_ONLY
+- `vpc_connector_name`: ex: streamquest-vpc-2-conn (optionnel)
+- `vpc_egress`: PRIVATE_RANGES_ONLY | ALL_TRAFFIC
+
+Prérequis: secret `GCP_SA_KEY_DEV` défini dans le repository.
