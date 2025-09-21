@@ -63,6 +63,7 @@ Ajouter les secrets dans GitHub Repository Settings :
 
 - `GCP_SA_KEY_DEV` : Contenu du fichier `gcp-sa-dev.json`
 - `GCP_SA_KEY_PROD` : Contenu du fichier `gcp-sa-prod.json`
+- `TF_STATE_BUCKET` : Nom du bucket GCS pour les états Terraform (ex: `my-terraform-states`)
 
 ## Structure des Services
 
@@ -82,11 +83,14 @@ services/
 ## Déploiement
 
 ### Développement (Automatique)
-- Lancer le workflow "Deploy to Development" via Run workflow avec 3 inputs:
-  - auth_image, users_image, orders_image (images déjà poussées dans Artifact Registry)
+- **Trigger** : Pull Request vers `develop` branch
+- **Action** : Plan + Apply automatique sur l'environnement dev
+- **État** : Stocké dans GCS avec le préfixe `streamquest/dev`
 
-### Production (Manuel)
-- Lancer "Deploy to Production" via Run workflow avec les 3 inputs d'images et `confirm=deploy`
+### Production (Automatique)
+- **Trigger** : Publication d'une Release GitHub
+- **Action** : Plan + Apply automatique sur l'environnement prod
+- **État** : Stocké dans GCS avec le préfixe `streamquest/prod`
 
 ## Configuration Backend
 
