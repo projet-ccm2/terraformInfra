@@ -28,6 +28,7 @@ jobs:
         terraform_version: 1.6.0
 
     - name: Authenticate to Google Cloud
+      id: auth
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.GCP_SA_KEY_DEV }}
@@ -35,9 +36,14 @@ jobs:
     - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
 
+    - name: Export ADC for Terraform
+      run: echo "GOOGLE_APPLICATION_CREDENTIALS=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
+
     - name: Create Terraform state bucket if not exists
       run: |
-        gsutil ls gs://streamquest-472309-terraform-states || gsutil mb gs://streamquest-472309-terraform-states
+        gsutil ls -b gs://streamquest-472309-terraform-states >/dev/null 2>&1 \
+          || gsutil mb -p ${PROJECT_ID} -l ${REGION} -b on gs://streamquest-472309-terraform-states \
+          || true
 
     - name: Terraform Init
       run: |
