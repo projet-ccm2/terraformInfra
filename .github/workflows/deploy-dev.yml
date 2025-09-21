@@ -37,11 +37,11 @@ jobs:
 
     - name: Create Terraform state bucket if not exists
       run: |
-        gsutil ls gs://${{ secrets.TF_STATE_BUCKET }} || gsutil mb gs://${{ secrets.TF_STATE_BUCKET }}
+        gsutil ls gs://streamquest-472309-terraform-states || gsutil mb gs://streamquest-472309-terraform-states
 
     - name: Terraform Init
       run: |
-        terraform init -reconfigure -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="prefix=streamquest/dev"
+        terraform init -reconfigure -backend-config="bucket=streamquest-472309-terraform-states" -backend-config="prefix=streamquest/dev"
       working-directory: .
 
     - name: Terraform Plan
@@ -57,6 +57,6 @@ jobs:
     - name: Terraform Destroy on failure
       if: ${{ failure() }}
       run: |
-        terraform init -reconfigure -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="prefix=streamquest/dev" -lock-timeout=5m
+        terraform init -reconfigure -backend-config="bucket=streamquest-472309-terraform-states" -backend-config="prefix=streamquest/dev" -lock-timeout=5m
         terraform destroy -lock-timeout=5m -auto-approve -input=false -var-file=env/dev.tfvars
       working-directory: .

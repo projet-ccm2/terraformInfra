@@ -63,7 +63,8 @@ Ajouter les secrets dans GitHub Repository Settings :
 
 - `GCP_SA_KEY_DEV` : Contenu du fichier `gcp-sa-dev.json`
 - `GCP_SA_KEY_PROD` : Contenu du fichier `gcp-sa-prod.json`
-- `TF_STATE_BUCKET` : Nom du bucket GCS pour les états Terraform (ex: `my-terraform-states`)
+
+**Note**: Le bucket GCS `streamquest-472309-terraform-states` est configuré en dur dans les workflows.
 
 ## Structure des Services
 
