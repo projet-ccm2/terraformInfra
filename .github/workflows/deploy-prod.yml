@@ -1,0 +1,56 @@
+name: Deploy to Production
+
+on:
+  release:
+    types: [published]
+
+env:
+  PROJECT_ID: streamquest-prod
+  REGION: europe-west1
+  REPO_ID: orders
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.0
+
+    - name: Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY_PROD }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Export ADC for Terraform
+      run: echo "GOOGLE_APPLICATION_CREDENTIALS=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
+
+    - name: Create Terraform state bucket if not exists
+      run: |
+        gsutil ls -b gs://streamquest-472309-terraform-states >/dev/null 2>&1 \
+          || gsutil mb -p ${PROJECT_ID} -l ${REGION} -b on gs://streamquest-472309-terraform-states \
+          || true
+
+    - name: Terraform Init
+      run: |
+        terraform init -reconfigure -backend-config="bucket=streamquest-472309-terraform-states" -backend-config="prefix=streamquest/prod"
+      working-directory: .
+
+    - name: Terraform Plan
+      run: |
+        terraform plan -var-file=env/prod.tfvars
+      working-directory: .
+
+    - name: Terraform Apply
+      run: |
+        terraform apply -auto-approve -var-file=env/prod.tfvars
+      working-directory: .
