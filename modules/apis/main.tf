@@ -7,9 +7,7 @@ locals {
     "iam.googleapis.com",
     "compute.googleapis.com",
     "storage.googleapis.com",
-    // Required for Private Service Connect / VPC peering for Cloud SQL Private IP
     "servicenetworking.googleapis.com",
-    // Optional but recommended for Serverless VPC Access Connector
     "vpcaccess.googleapis.com"
   ]
 }

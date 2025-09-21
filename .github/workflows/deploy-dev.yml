@@ -54,26 +54,22 @@ jobs:
     - name: Import existing VPC/subnet if present
       run: |
         set -e
-        # Import VPC network if it already exists (idempotent)
         if gcloud compute networks describe streamquest-vpc-2 --project=${PROJECT_ID} --format="get(name)" >/dev/null 2>&1; then
           terraform import -lock-timeout=5m -input=false -var-file=env/dev.tfvars \
             module.vpc_network.google_compute_network.vpc \
             projects/${PROJECT_ID}/global/networks/streamquest-vpc-2 || true
         fi
 
-        # Import subnet if it already exists (idempotent)
         if gcloud compute networks subnets describe streamquest-vpc-2-subnet --region=${REGION} --project=${PROJECT_ID} --format="get(name)" >/dev/null 2>&1; then
           terraform import -lock-timeout=5m -input=false -var-file=env/dev.tfvars \
             module.vpc_network.google_compute_subnetwork.subnet \
             projects/${PROJECT_ID}/regions/${REGION}/subnetworks/streamquest-vpc-2-subnet || true
         fi
 
-        # Best-effort imports for PSA range and VPC Access connector
         terraform import -lock-timeout=5m -input=false -var-file=env/dev.tfvars \
           module.vpc_network.google_compute_global_address.psa_range \
           projects/${PROJECT_ID}/global/addresses/streamquest-vpc-2-psa || true
 
-        # Try importing the private service connection (two known ID formats)
         terraform import -lock-timeout=5m -input=false -var-file=env/dev.tfvars \
           module.vpc_network.google_service_networking_connection.private_vpc_connection \
           services/servicenetworking.googleapis.com:projects/${PROJECT_ID}/global/networks/streamquest-vpc-2 || true

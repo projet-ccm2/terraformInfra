@@ -11,7 +11,6 @@ resource "google_compute_subnetwork" "subnet" {
   private_ip_google_access = true
 }
 
-// Reserved range for Private Service Connect (Cloud SQL Private IP)
 resource "google_compute_global_address" "psa_range" {
   name          = "${var.network_name}-psa"
   purpose       = "VPC_PEERING"
@@ -20,7 +19,6 @@ resource "google_compute_global_address" "psa_range" {
   network       = google_compute_network.vpc.id
 }
 
-// Establish private services connection for the VPC
 resource "google_service_networking_connection" "private_vpc_connection" {
   network                 = google_compute_network.vpc.id
   service                 = "servicenetworking.googleapis.com"
