@@ -10,7 +10,7 @@ on:
 
 
 env:
-  PROJECT_ID: streamquest-dev
+  PROJECT_ID: streamquest-472309
   REGION: europe-west1
   REPO_ID: orders
 
@@ -48,6 +48,42 @@ jobs:
     - name: Terraform Init
       run: |
         terraform init -reconfigure -backend-config="bucket=streamquest-472309-terraform-states" -backend-config="prefix=streamquest/dev"
+      working-directory: .
+
+    - name: Import existing VPC/subnet if present
+      run: |
+        set -e
+        # Import VPC network if it already exists (idempotent)
+        if gcloud compute networks describe streamquest-vpc-2 --project=${PROJECT_ID} --format="get(name)" >/dev/null 2>&1; then
+          terraform import -lock-timeout=5m -input=false \
+            module.vpc_network.google_compute_network.vpc \
+            projects/${PROJECT_ID}/global/networks/streamquest-vpc-2 || true
+        fi
+
+        # Import subnet if it already exists (idempotent)
+        if gcloud compute networks subnets describe streamquest-vpc-2-subnet --region=${REGION} --project=${PROJECT_ID} --format="get(name)" >/dev/null 2>&1; then
+          terraform import -lock-timeout=5m -input=false \
+            module.vpc_network.google_compute_subnetwork.subnet \
+            projects/${PROJECT_ID}/regions/${REGION}/subnetworks/streamquest-vpc-2-subnet || true
+        fi
+
+        # Best-effort imports for PSA range and VPC Access connector
+        terraform import -lock-timeout=5m -input=false \
+          module.vpc_network.google_compute_global_address.psa_range \
+          projects/${PROJECT_ID}/global/addresses/streamquest-vpc-2-psa || true
+
+        # Try importing the private service connection (two known ID formats)
+        terraform import -lock-timeout=5m -input=false \
+          module.vpc_network.google_service_networking_connection.private_vpc_connection \
+          services/servicenetworking.googleapis.com:projects/${PROJECT_ID}/global/networks/streamquest-vpc-2 || true
+
+        terraform import -lock-timeout=5m -input=false \
+          module.vpc_network.google_service_networking_connection.private_vpc_connection \
+          projects/${PROJECT_ID}/global/networks/streamquest-vpc-2 || true
+
+        terraform import -lock-timeout=5m -input=false \
+          module.vpc_network.google_vpc_access_connector.connector \
+          projects/${PROJECT_ID}/locations/${REGION}/connectors/streamquest-vpc-2-conn || true
       working-directory: .
 
     - name: Terraform Plan

@@ -169,6 +169,30 @@ terraform init -migrate-state
 3. **Réseau** : Vérifier la connectivité VPC
 4. **Images** : Vérifier que les images sont poussées dans Artifact Registry
 
+### 409 Already Exists sur le VPC
+Si l'erreur suivante apparaît lors d'un déploiement:
+
+```
+Error 409: The resource 'projects/<PROJECT_ID>/global/networks/streamquest-vpc-2' already exists
+```
+
+Cela signifie que le réseau a été créé lors d'une exécution précédente (ou manuelle) mais n'est pas présent dans l'état Terraform actuel. Deux options:
+
+- Importer les ressources existantes dans l'état Terraform:
+  - `terraform import module.vpc_network.google_compute_network.vpc projects/<PROJECT_ID>/global/networks/streamquest-vpc-2`
+  - `terraform import module.vpc_network.google_compute_subnetwork.subnet projects/<PROJECT_ID>/regions/europe-west1/subnetworks/streamquest-vpc-2-subnet`
+  - `terraform import module.vpc_network.google_compute_global_address.psa_range projects/<PROJECT_ID>/global/addresses/streamquest-vpc-2-psa`
+  - `terraform import module.vpc_network.google_service_networking_connection.private_vpc_connection services/servicenetworking.googleapis.com:projects/<PROJECT_ID>/global/networks/streamquest-vpc-2`
+  - `terraform import module.vpc_network.google_vpc_access_connector.connector projects/<PROJECT_ID>/locations/europe-west1/connectors/streamquest-vpc-2-conn`
+
+- Ou supprimer les ressources orphelines (si non utilisées) et relancer:
+  - `gcloud compute networks delete streamquest-vpc-2 --project=<PROJECT_ID> --quiet`
+  - `gcloud compute networks subnets delete streamquest-vpc-2-subnet --region=europe-west1 --project=<PROJECT_ID> --quiet`
+  - `gcloud compute addresses delete streamquest-vpc-2-psa --global --project=<PROJECT_ID> --quiet`
+  - (La connexion Private Service Connect est supprimée automatiquement lorsque le réseau/la plage associée disparaît ou via l’API service networking.)
+
+Le workflow GitHub tente désormais d'importer automatiquement ces ressources s'il les détecte.
+
 ### Commandes utiles
 ```bash
 # Vérifier l'état
