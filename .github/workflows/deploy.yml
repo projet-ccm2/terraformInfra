@@ -54,48 +54,48 @@ jobs:
     timeout-minutes: 30
 
     steps:
-    - name: 📥 Checkout code
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: 🔧 Setup Terraform
+    - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
         terraform_version: ${{ env.TF_VERSION }}
         terraform_wrapper: false
 
-    - name: 🔐 Authenticate to Google Cloud
+    - name: Authenticate to Google Cloud
       id: auth
       uses: google-github-actions/auth@v2
       with:
         credentials_json: ${{ secrets.gcp_credentials }}
 
-    - name: ☁️ Set up Cloud SDK
+    - name: Set up Cloud SDK
       uses: google-github-actions/setup-gcloud@v2
 
-    - name: 🔑 Export ADC for Terraform
+    - name: Export ADC for Terraform
       run: |
         echo "GOOGLE_APPLICATION_CREDENTIALS=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
         echo "PROJECT_ID=${{ inputs.project_id }}" >> $GITHUB_ENV
         echo "REGION=${{ inputs.region }}" >> $GITHUB_ENV
 
-    - name: ✅ Validate inputs
+    - name: Validate inputs
       run: |
         if [ ! -f "${{ inputs.var_file }}" ]; then
-          echo "❌ Error: tfvars file not found: ${{ inputs.var_file }}"
+          echo "Error: tfvars file not found: ${{ inputs.var_file }}"
           exit 1
         fi
-        echo "✅ All inputs validated"
+        echo "All inputs validated"
 
-    - name: 🪣 Create Terraform state bucket if not exists
+    - name: Create Terraform state bucket if not exists
       run: |
         if gsutil ls -b gs://${{ inputs.state_bucket }} >/dev/null 2>&1; then
-          echo "✅ State bucket already exists: ${{ inputs.state_bucket }}"
+          echo "State bucket already exists: ${{ inputs.state_bucket }}"
         else
-          echo "📦 Creating state bucket: ${{ inputs.state_bucket }}"
+          echo "Creating state bucket: ${{ inputs.state_bucket }}"
           gsutil mb -p ${{ inputs.project_id }} -l ${{ inputs.region }} -b on gs://${{ inputs.state_bucket }} || true
         fi
 
-    - name: 🚀 Terraform Init
+    - name: Terraform Init
       id: init
       run: |
         terraform init \
@@ -105,27 +105,27 @@ jobs:
           -upgrade
       working-directory: .
 
-    - name: 📋 Import existing resources
+    - name: Import existing resources
       id: import
       continue-on-error: true
       run: |
-        echo "🔍 Checking for existing resources to import..."
+        echo "Checking for existing resources to import..."
         
         import_resource() {
           local resource_type=$1
           local resource_id=$2
           local terraform_address=$3
           
-          echo "📥 Attempting to import: $resource_type"
+          echo "Attempting to import: $resource_type"
           if terraform import -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
             -input=false \
             -var-file=${{ inputs.var_file }} \
             "$terraform_address" \
             "$resource_id" >/dev/null 2>&1; then
-            echo "✅ Successfully imported: $resource_type"
+            echo "Successfully imported: $resource_type"
             return 0
           else
-            echo "ℹ️  Resource already managed or not found: $resource_type"
+            echo "Resource already managed or not found: $resource_type"
             return 0
           fi
         }
@@ -168,10 +168,10 @@ jobs:
             "module.db.google_sql_database_instance.db"
         fi
 
-        echo "✅ Import step completed"
+        echo "Import step completed"
       working-directory: .
 
-    - name: 📊 Terraform Plan
+    - name: Terraform Plan
       id: plan
       run: |
         terraform plan \
@@ -180,7 +180,7 @@ jobs:
           -out=tfplan
       working-directory: .
 
-    - name: 🚀 Terraform Apply
+    - name: Terraform Apply
       id: apply
       run: |
         terraform apply \
@@ -190,10 +190,10 @@ jobs:
         rm -f tfplan
       working-directory: .
 
-    - name: 🧹 Cleanup on failure
+    - name: Cleanup on failure
       if: failure()
       run: |
-        echo "⚠️ Deployment failed, cleaning up..."
+        echo "Deployment failed, cleaning up..."
         
         # Re-initialize Terraform
         terraform init -reconfigure \
@@ -205,14 +205,14 @@ jobs:
         if gcloud sql instances describe ${{ inputs.instance_name }} \
           --project=${{ inputs.project_id }} \
           --format="get(settings.deletionProtectionEnabled)" 2>/dev/null | grep -q "True"; then
-          echo "🔓 Disabling deletion protection on Cloud SQL instance"
+          echo "Disabling deletion protection on Cloud SQL instance"
           gcloud sql instances patch ${{ inputs.instance_name }} \
             --project=${{ inputs.project_id }} \
             --no-deletion-protection || true
         fi
         
         # Destroy resources
-        echo "🗑️ Destroying resources..."
+        echo "Destroying resources..."
         terraform destroy \
           -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
           -auto-approve \
@@ -220,11 +220,11 @@ jobs:
           -var-file=${{ inputs.var_file }} || true
       working-directory: .
 
-    - name: ✅ Deployment Summary
+    - name: Deployment Summary
       if: always()
       run: |
         if [ "${{ job.status }}" == "success" ]; then
-          echo "✅ Deployment to ${{ inputs.environment }} completed successfully!"
+          echo "Deployment to ${{ inputs.environment }} completed successfully!"
         else
-          echo "❌ Deployment to ${{ inputs.environment }} failed"
+          echo "Deployment to ${{ inputs.environment }} failed"
         fi
