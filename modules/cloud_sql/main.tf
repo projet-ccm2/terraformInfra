@@ -19,8 +19,6 @@ resource "google_sql_database_instance" "db" {
     }
     backup_configuration { 
       enabled                        = var.enable_backups
-      start_time                     = var.enable_backups ? "03:00" : null
-      location                       = var.region
       point_in_time_recovery_enabled = false
       transaction_log_retention_days = var.enable_backups ? 1 : null
     }
