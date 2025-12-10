@@ -13,6 +13,10 @@ db = {
   db_user       = "appuser"
   db_password   = "CHANGE_ME"
   version       = "MYSQL_8_0"
-  tier          = "db-custom-1-3840"
+  tier          = "db-f1-micro"
 }
+
+enable_db_backups         = false
+enable_bucket_versioning  = false
+vpc_connector_min_instances = 0
 

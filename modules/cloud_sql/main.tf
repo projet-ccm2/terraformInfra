@@ -11,7 +11,9 @@ resource "google_sql_database_instance" "db" {
       ipv4_enabled = false
       private_network = var.private_network
     }
-    backup_configuration { enabled = true }
+    backup_configuration { 
+      enabled = var.enable_backups
+    }
   }
 }
 

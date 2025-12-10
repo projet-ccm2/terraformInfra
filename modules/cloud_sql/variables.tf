@@ -26,3 +26,8 @@ variable "database_version" {
 variable "private_network" {
   type = string
 }
+variable "enable_backups" {
+  type        = bool
+  default     = true
+  description = "Enable automatic backups for Cloud SQL"
+}

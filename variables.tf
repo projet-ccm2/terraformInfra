@@ -44,3 +44,21 @@ variable "env" {
   type    = string
   default = "dev"
 }
+
+variable "enable_db_backups" {
+  type        = bool
+  default     = true
+  description = "Enable automatic backups for Cloud SQL (disable in dev to save costs)"
+}
+
+variable "enable_bucket_versioning" {
+  type        = bool
+  default     = true
+  description = "Enable versioning for Cloud Storage bucket (disable in dev to save costs)"
+}
+
+variable "vpc_connector_min_instances" {
+  type        = number
+  default     = 2
+  description = "Minimum instances for VPC Access Connector (set to 0 in dev for scale-to-zero, saves ~$10-15/mois)"
+}

@@ -20,9 +20,10 @@ module "db" {
   db_name        = var.db.db_name
   db_user        = var.db.db_user
   db_password    = var.db.db_password
-  tier           = "db-f1-micro"
+  tier           = var.db.tier
   database_version = var.db.version
   private_network = module.vpc_network.vpc_self_link
+  enable_backups = var.enable_db_backups
   depends_on     = [module.apis, module.vpc_network]
 }
 
@@ -31,6 +32,7 @@ module "bucket" {
   project_id   = var.project_id
   region       = var.region
   bucket_name  = "${var.app_name}-${var.project_id}-data"
+  enable_versioning = var.enable_bucket_versioning
   depends_on   = [module.apis]
 }
 
