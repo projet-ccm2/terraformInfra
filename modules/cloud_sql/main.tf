@@ -10,11 +10,12 @@ resource "google_sql_database_instance" "db" {
     ip_configuration { 
       ipv4_enabled = var.public_ip
       private_network = var.public_ip ? null : var.private_network
-      authorized_networks = var.public_ip ? [
-        for network in var.authorized_networks : {
-          value = network
+      dynamic "authorized_networks" {
+        for_each = var.public_ip ? var.authorized_networks : []
+        content {
+          value = authorized_networks.value
         }
-      ] : []
+      }
     }
     backup_configuration { 
       enabled                        = var.enable_backups
