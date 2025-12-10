@@ -171,6 +171,20 @@ jobs:
         echo "Import step completed"
       working-directory: .
 
+    - name: Disable deletion protection if needed
+      run: |
+        if gcloud sql instances describe ${{ inputs.instance_name }} \
+          --project=${{ inputs.project_id }} \
+          --format="get(settings.deletionProtectionEnabled)" 2>/dev/null | grep -q "True"; then
+          echo "Disabling deletion protection on Cloud SQL instance: ${{ inputs.instance_name }}"
+          gcloud sql instances patch ${{ inputs.instance_name }} \
+            --project=${{ inputs.project_id }} \
+            --no-deletion-protection || true
+        else
+          echo "Deletion protection already disabled or instance does not exist"
+        fi
+      continue-on-error: true
+
     - name: Terraform Plan
       id: plan
       run: |
