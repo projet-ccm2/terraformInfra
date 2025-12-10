@@ -1,0 +1,230 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'Environment name (dev, int, prod)'
+      project_id:
+        required: true
+        type: string
+        description: 'GCP Project ID'
+      region:
+        required: true
+        type: string
+        description: 'GCP Region'
+      var_file:
+        required: true
+        type: string
+        description: 'Path to tfvars file'
+      backend_prefix:
+        required: true
+        type: string
+        description: 'Terraform backend prefix'
+      instance_name:
+        required: true
+        type: string
+        description: 'Cloud SQL instance name'
+      state_bucket:
+        required: true
+        type: string
+        description: 'Terraform state bucket name'
+      network_name:
+        required: false
+        type: string
+        default: 'streamquest-vpc-2'
+        description: 'VPC network name'
+    secrets:
+      gcp_credentials:
+        required: true
+        description: 'GCP service account credentials JSON'
+
+env:
+  TF_VERSION: '1.6.0'
+  TF_LOCK_TIMEOUT: '5m'
+  VPC_NETWORK: ${{ inputs.network_name || 'streamquest-vpc-2' }}
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    timeout-minutes: 30
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🔧 Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ env.TF_VERSION }}
+        terraform_wrapper: false
+
+    - name: 🔐 Authenticate to Google Cloud
+      id: auth
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.gcp_credentials }}
+
+    - name: ☁️ Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: 🔑 Export ADC for Terraform
+      run: |
+        echo "GOOGLE_APPLICATION_CREDENTIALS=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
+        echo "PROJECT_ID=${{ inputs.project_id }}" >> $GITHUB_ENV
+        echo "REGION=${{ inputs.region }}" >> $GITHUB_ENV
+
+    - name: ✅ Validate inputs
+      run: |
+        if [ ! -f "${{ inputs.var_file }}" ]; then
+          echo "❌ Error: tfvars file not found: ${{ inputs.var_file }}"
+          exit 1
+        fi
+        echo "✅ All inputs validated"
+
+    - name: 🪣 Create Terraform state bucket if not exists
+      run: |
+        if gsutil ls -b gs://${{ inputs.state_bucket }} >/dev/null 2>&1; then
+          echo "✅ State bucket already exists: ${{ inputs.state_bucket }}"
+        else
+          echo "📦 Creating state bucket: ${{ inputs.state_bucket }}"
+          gsutil mb -p ${{ inputs.project_id }} -l ${{ inputs.region }} -b on gs://${{ inputs.state_bucket }} || true
+        fi
+
+    - name: 🚀 Terraform Init
+      id: init
+      run: |
+        terraform init \
+          -reconfigure \
+          -backend-config="bucket=${{ inputs.state_bucket }}" \
+          -backend-config="prefix=${{ inputs.backend_prefix }}" \
+          -upgrade
+      working-directory: .
+
+    - name: 📋 Import existing resources
+      id: import
+      continue-on-error: true
+      run: |
+        echo "🔍 Checking for existing resources to import..."
+        
+        import_resource() {
+          local resource_type=$1
+          local resource_id=$2
+          local terraform_address=$3
+          
+          echo "📥 Attempting to import: $resource_type"
+          if terraform import -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
+            -input=false \
+            -var-file=${{ inputs.var_file }} \
+            "$terraform_address" \
+            "$resource_id" >/dev/null 2>&1; then
+            echo "✅ Successfully imported: $resource_type"
+            return 0
+          else
+            echo "ℹ️  Resource already managed or not found: $resource_type"
+            return 0
+          fi
+        }
+        
+        # Import VPC Network
+        if gcloud compute networks describe ${{ env.VPC_NETWORK }} \
+          --project=${{ inputs.project_id }} \
+          --format="get(name)" >/dev/null 2>&1; then
+          import_resource "VPC Network" \
+            "projects/${{ inputs.project_id }}/global/networks/${{ env.VPC_NETWORK }}" \
+            "module.vpc_network.google_compute_network.vpc"
+        fi
+
+        # Import VPC Subnet
+        if gcloud compute networks subnets describe ${{ env.VPC_NETWORK }}-subnet \
+          --region=${{ inputs.region }} \
+          --project=${{ inputs.project_id }} \
+          --format="get(name)" >/dev/null 2>&1; then
+          import_resource "VPC Subnet" \
+            "projects/${{ inputs.project_id }}/regions/${{ inputs.region }}/subnetworks/${{ env.VPC_NETWORK }}-subnet" \
+            "module.vpc_network.google_compute_subnetwork.subnet"
+        fi
+
+        # Import PSA Range
+        import_resource "PSA Range" \
+          "projects/${{ inputs.project_id }}/global/addresses/${{ env.VPC_NETWORK }}-psa" \
+          "module.vpc_network.google_compute_global_address.psa_range"
+
+        # Import Service Networking Connection
+        import_resource "Service Networking Connection" \
+          "services/servicenetworking.googleapis.com:projects/${{ inputs.project_id }}/global/networks/${{ env.VPC_NETWORK }}" \
+          "module.vpc_network.google_service_networking_connection.private_vpc_connection"
+
+        # Import Cloud SQL Instance
+        if gcloud sql instances describe ${{ inputs.instance_name }} \
+          --project=${{ inputs.project_id }} \
+          --format="get(name)" >/dev/null 2>&1; then
+          import_resource "Cloud SQL Instance" \
+            "${{ inputs.project_id }}/${{ inputs.instance_name }}" \
+            "module.db.google_sql_database_instance.db"
+        fi
+
+        echo "✅ Import step completed"
+      working-directory: .
+
+    - name: 📊 Terraform Plan
+      id: plan
+      run: |
+        terraform plan \
+          -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
+          -var-file=${{ inputs.var_file }} \
+          -out=tfplan
+      working-directory: .
+
+    - name: 🚀 Terraform Apply
+      id: apply
+      run: |
+        terraform apply \
+          -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
+          -auto-approve \
+          tfplan
+        rm -f tfplan
+      working-directory: .
+
+    - name: 🧹 Cleanup on failure
+      if: failure()
+      run: |
+        echo "⚠️ Deployment failed, cleaning up..."
+        
+        # Re-initialize Terraform
+        terraform init -reconfigure \
+          -backend-config="bucket=${{ inputs.state_bucket }}" \
+          -backend-config="prefix=${{ inputs.backend_prefix }}" \
+          -lock-timeout=${{ env.TF_LOCK_TIMEOUT }}
+        
+        # Disable deletion protection on Cloud SQL if enabled
+        if gcloud sql instances describe ${{ inputs.instance_name }} \
+          --project=${{ inputs.project_id }} \
+          --format="get(settings.deletionProtectionEnabled)" 2>/dev/null | grep -q "True"; then
+          echo "🔓 Disabling deletion protection on Cloud SQL instance"
+          gcloud sql instances patch ${{ inputs.instance_name }} \
+            --project=${{ inputs.project_id }} \
+            --no-deletion-protection || true
+        fi
+        
+        # Destroy resources
+        echo "🗑️ Destroying resources..."
+        terraform destroy \
+          -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
+          -auto-approve \
+          -input=false \
+          -var-file=${{ inputs.var_file }} || true
+      working-directory: .
+
+    - name: ✅ Deployment Summary
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Deployment to ${{ inputs.environment }} completed successfully!"
+        else
+          echo "❌ Deployment to ${{ inputs.environment }} failed"
+        fi
