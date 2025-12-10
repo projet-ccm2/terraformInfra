@@ -57,8 +57,14 @@ variable "enable_bucket_versioning" {
   description = "Enable versioning for Cloud Storage bucket (disable in dev to save costs)"
 }
 
-variable "vpc_connector_min_instances" {
-  type        = number
-  default     = 2
-  description = "Minimum instances for VPC Access Connector (set to 0 in dev for scale-to-zero, saves ~$10-15/mois)"
+variable "db_public_ip" {
+  type        = bool
+  default     = false
+  description = "Enable public IP for Cloud SQL (saves ~$10-15/month by removing VPC Connector, but less secure)"
+}
+
+variable "db_authorized_networks" {
+  type        = list(string)
+  default     = []
+  description = "List of CIDR blocks authorized to access Cloud SQL (empty = allow all, recommended to restrict)"
 }

@@ -8,11 +8,27 @@ resource "google_sql_database_instance" "db" {
   settings {
     tier = var.tier
     ip_configuration { 
-      ipv4_enabled = false
-      private_network = var.private_network
+      ipv4_enabled = var.public_ip
+      private_network = var.public_ip ? null : var.private_network
+      authorized_networks = var.public_ip ? [
+        for network in var.authorized_networks : {
+          value = network
+        }
+      ] : []
     }
     backup_configuration { 
-      enabled = var.enable_backups
+      enabled                        = var.enable_backups
+      start_time                     = var.enable_backups ? "03:00" : null
+      location                       = var.region
+      point_in_time_recovery_enabled = false
+      transaction_log_retention_days = var.enable_backups ? 1 : null
+    }
+    deletion_protection_enabled = false
+    insights_config {
+      query_insights_enabled  = false
+      query_string_length     = 1024
+      record_application_tags = false
+      record_client_address   = false
     }
   }
 }

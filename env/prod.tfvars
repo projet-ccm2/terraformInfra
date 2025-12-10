@@ -18,4 +18,5 @@ db = {
 
 enable_db_backups         = true
 enable_bucket_versioning  = false
-vpc_connector_min_instances = 0
+db_public_ip              = true
+db_authorized_networks    = []

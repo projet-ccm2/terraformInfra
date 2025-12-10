@@ -24,6 +24,8 @@ module "db" {
   database_version = var.db.version
   private_network = module.vpc_network.vpc_self_link
   enable_backups = var.enable_db_backups
+  public_ip      = var.db_public_ip
+  authorized_networks = var.db_authorized_networks
   depends_on     = [module.apis, module.vpc_network]
 }
 

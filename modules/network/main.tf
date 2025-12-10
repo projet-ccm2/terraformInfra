@@ -25,11 +25,3 @@ resource "google_service_networking_connection" "private_vpc_connection" {
   reserved_peering_ranges = [google_compute_global_address.psa_range.name]
 }
 
-resource "google_vpc_access_connector" "connector" {
-  name          = "${var.network_name}-conn"
-  region        = "europe-west1"
-  network       = google_compute_network.vpc.name
-  ip_cidr_range = "10.8.0.0/28"
-  min_instances = var.vpc_connector_min
-  max_instances = 3
-}

@@ -7,8 +7,7 @@ locals {
     "iam.googleapis.com",
     "compute.googleapis.com",
     "storage.googleapis.com",
-    "servicenetworking.googleapis.com",
-    "vpcaccess.googleapis.com"
+    "servicenetworking.googleapis.com"
   ]
 }
 

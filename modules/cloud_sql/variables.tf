@@ -31,3 +31,15 @@ variable "enable_backups" {
   default     = true
   description = "Enable automatic backups for Cloud SQL"
 }
+
+variable "public_ip" {
+  type        = bool
+  default     = false
+  description = "Enable public IP for Cloud SQL"
+}
+
+variable "authorized_networks" {
+  type        = list(string)
+  default     = []
+  description = "List of CIDR blocks authorized to access Cloud SQL"
+}
