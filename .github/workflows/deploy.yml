@@ -95,8 +95,12 @@ jobs:
         PROJECT_ID=$(grep "^project_id" ${{ inputs.var_file }} | awk '{print $3}' | tr -d '"' || echo "")
         ENV=$(grep "^env" ${{ inputs.var_file }} | awk '{print $3}' | tr -d '"' || echo "")
         if [ -n "$APP_NAME" ] && [ -n "$PROJECT_ID" ] && [ -n "$ENV" ]; then
-          EXPECTED_BUCKET="gs://${APP_NAME}-${PROJECT_ID}-${ENV}-data-ccm"
+          # Calculate hash (same as Terraform will do)
+          HASH_INPUT="${PROJECT_ID}${ENV}${APP_NAME}"
+          HASH=$(echo -n "$HASH_INPUT" | sha256sum | cut -c1-16)
+          EXPECTED_BUCKET="gs://${APP_NAME}-${HASH}"
           echo "Nom du bucket qui sera créé: $EXPECTED_BUCKET"
+          echo "  (basé sur le hash de: project_id=$PROJECT_ID, env=$ENV, app_name=$APP_NAME)"
           echo ""
           echo "=== Vérification si ce bucket existe déjà ==="
           if gsutil ls "$EXPECTED_BUCKET" >/dev/null 2>&1; then

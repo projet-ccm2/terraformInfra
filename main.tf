@@ -34,7 +34,8 @@ module "bucket" {
   source       = "./modules/bucket"
   project_id   = var.project_id
   region       = var.region
-  bucket_name = "${var.app_name}-${var.project_id}-${var.env}-data-ccm"
+  # Use hash of full project_id to ensure global uniqueness (bucket names are global across all GCP)
+  bucket_name = "${var.app_name}-${substr(sha256("${var.project_id}${var.env}${var.app_name}"), 0, 16)}"
   enable_versioning = var.enable_bucket_versioning
   depends_on   = [module.apis]
 }
