@@ -13,7 +13,6 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       environment: prod
-      project_id: streamquest-prod
       region: europe-west1
       var_file: env/prod.tfvars
       backend_prefix: streamquest/prod
@@ -21,3 +20,4 @@ jobs:
       state_bucket: streamquest-472309-terraform-states
     secrets:
       gcp_credentials: ${{ secrets.GCP_SA_KEY_PROD }}
+      project_id: ${{ secrets.PROD_GCP_PROJECT_ID }}
