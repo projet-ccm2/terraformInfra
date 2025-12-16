@@ -30,6 +30,10 @@ module "db" {
   depends_on     = [module.apis, module.vpc_network]
 }
 
+resource "random_id" "bucket_suffix" {
+  byte_length = 4
+}
+
 module "bucket" {
   source       = "./modules/bucket"
   project_id   = var.project_id

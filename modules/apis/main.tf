@@ -23,6 +23,8 @@ resource "google_project_service" "required" {
   project            = var.project_id
   service            = each.value
   disable_on_destroy = false
+  
+  depends_on = [google_project_service.required]
 }
 
 # Enable other services (they depend on Cloud Resource Manager)
