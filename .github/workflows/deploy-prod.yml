@@ -18,7 +18,7 @@ jobs:
       var_file: env/prod.tfvars
       backend_prefix: streamquest/prod
       instance_name: orders-prod
-      state_bucket: streamquest-472309-terraform-states
+      state_bucket: streamquest-dev-ccm2-terraform-states
     secrets:
       gcp_credentials: ${{ secrets.GCP_SA_KEY_PROD }}
       project_id: ${{ secrets.PROD_GCP_PROJECT_ID }}

@@ -1,6 +1,6 @@
 terraform {
   backend "gcs" {
-    bucket = "streamquest-472309-terraform-states"
+    bucket = "streamquest-terraform-states"
     prefix = "streamquest"
   }
 }
