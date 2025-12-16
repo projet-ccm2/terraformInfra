@@ -85,6 +85,34 @@ jobs:
         fi
         echo "All inputs validated"
 
+    - name: List existing buckets and show bucket name to be created
+      run: |
+        echo "=== Buckets existants dans le projet ${{ secrets.project_id }} ==="
+        gsutil ls -p ${{ secrets.project_id }} 2>&1 | head -20 || echo "Aucun bucket trouvé ou erreur de permissions"
+        echo ""
+        echo "=== Extraction du nom du bucket depuis tfvars ==="
+        APP_NAME=$(grep "^app_name" ${{ inputs.var_file }} | awk '{print $3}' | tr -d '"' || echo "")
+        PROJECT_ID=$(grep "^project_id" ${{ inputs.var_file }} | awk '{print $3}' | tr -d '"' || echo "")
+        ENV=$(grep "^env" ${{ inputs.var_file }} | awk '{print $3}' | tr -d '"' || echo "")
+        if [ -n "$APP_NAME" ] && [ -n "$PROJECT_ID" ] && [ -n "$ENV" ]; then
+          EXPECTED_BUCKET="gs://${APP_NAME}-${PROJECT_ID}-${ENV}-data-ccm"
+          echo "Nom du bucket qui sera créé: $EXPECTED_BUCKET"
+          echo ""
+          echo "=== Vérification si ce bucket existe déjà ==="
+          if gsutil ls "$EXPECTED_BUCKET" >/dev/null 2>&1; then
+            echo "❌ ERREUR: Le bucket $EXPECTED_BUCKET existe déjà!"
+            echo "Liste des buckets similaires:"
+            gsutil ls gs://${APP_NAME}-* 2>&1 | head -10
+          else
+            echo "✅ Le bucket $EXPECTED_BUCKET n'existe pas encore (OK)"
+          fi
+        else
+          echo "⚠️ Impossible d'extraire toutes les variables nécessaires"
+          echo "APP_NAME=$APP_NAME"
+          echo "PROJECT_ID=$PROJECT_ID"
+          echo "ENV=$ENV"
+        fi
+
     - name: Create Terraform state bucket if not exists
       run: |
         if gsutil ls -b gs://${{ inputs.state_bucket }} >/dev/null 2>&1; then
