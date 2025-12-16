@@ -7,7 +7,8 @@ resource "google_sql_database_instance" "db" {
 
   settings {
     tier = var.tier
-    activation_policy = var.activation_policy
+    # MySQL 8.0 (2nd gen) only supports ALWAYS or NEVER, not ON_DEMAND
+    activation_policy = var.database_version == "MYSQL_8_0" && var.activation_policy == "ON_DEMAND" ? "ALWAYS" : var.activation_policy
     ip_configuration { 
       ipv4_enabled = var.public_ip
       private_network = var.public_ip ? null : var.private_network

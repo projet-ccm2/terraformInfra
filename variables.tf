@@ -71,6 +71,6 @@ variable "db_authorized_networks" {
 
 variable "db_activation_policy" {
   type        = string
-  default     = "ON_DEMAND"
-  description = "Cloud SQL activation policy: ON_DEMAND (auto start/stop, saves costs), ALWAYS (always running), or NEVER (stopped, requires manual activation). Note: MySQL 8.0 is 2nd gen, only ALWAYS/NEVER available"
+  default     = "ALWAYS"
+  description = "Cloud SQL activation policy: ALWAYS (always running, default), NEVER (stopped, requires manual activation), or ON_DEMAND (only for 1st gen instances, not MySQL 8.0)"
 }

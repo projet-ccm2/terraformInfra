@@ -30,11 +30,15 @@ module "db" {
   depends_on     = [module.apis, module.vpc_network]
 }
 
+resource "random_id" "bucket_suffix" {
+  byte_length = 4
+}
+
 module "bucket" {
   source       = "./modules/bucket"
   project_id   = var.project_id
   region       = var.region
-  bucket_name  = "${var.app_name}-${var.project_id}-data"
+  bucket_name = "${var.app_name}-${var.project_id}-${var.env}-data-${random_id.bucket_suffix.hex}"
   enable_versioning = var.enable_bucket_versioning
   depends_on   = [module.apis]
 }
