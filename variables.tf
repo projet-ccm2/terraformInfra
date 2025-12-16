@@ -68,3 +68,9 @@ variable "db_authorized_networks" {
   default     = []
   description = "List of CIDR blocks authorized to access Cloud SQL (empty = allow all, recommended to restrict)"
 }
+
+variable "db_activation_policy" {
+  type        = string
+  default     = "ON_DEMAND"
+  description = "Cloud SQL activation policy: ON_DEMAND (auto start/stop, saves costs), ALWAYS (always running), or NEVER (stopped, requires manual activation). Note: MySQL 8.0 is 2nd gen, only ALWAYS/NEVER available"
+}

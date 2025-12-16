@@ -43,3 +43,21 @@ variable "authorized_networks" {
   default     = []
   description = "List of CIDR blocks authorized to access Cloud SQL"
 }
+
+variable "maintenance_window_day" {
+  type        = number
+  default     = 7
+  description = "Day of week for maintenance window (1=Monday, 7=Sunday)"
+}
+
+variable "maintenance_window_hour" {
+  type        = number
+  default     = 3
+  description = "Hour of day for maintenance window (0-23)"
+}
+
+variable "activation_policy" {
+  type        = string
+  default     = "ON_DEMAND"
+  description = "Activation policy: ON_DEMAND (auto start/stop, saves costs), ALWAYS (always running), or NEVER (stopped, requires manual activation). Note: ON_DEMAND only available for 1st gen instances, not MySQL 8.0"
+}

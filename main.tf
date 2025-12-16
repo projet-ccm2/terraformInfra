@@ -26,6 +26,7 @@ module "db" {
   enable_backups = var.enable_db_backups
   public_ip      = var.db_public_ip
   authorized_networks = var.db_authorized_networks
+  activation_policy = var.db_activation_policy
   depends_on     = [module.apis, module.vpc_network]
 }
 

@@ -7,6 +7,7 @@ resource "google_sql_database_instance" "db" {
 
   settings {
     tier = var.tier
+    activation_policy = var.activation_policy
     ip_configuration { 
       ipv4_enabled = var.public_ip
       private_network = var.public_ip ? null : var.private_network
@@ -28,6 +29,10 @@ resource "google_sql_database_instance" "db" {
       query_string_length     = 1024
       record_application_tags = false
       record_client_address   = false
+    }
+    maintenance_window {
+      day          = var.maintenance_window_day
+      hour         = var.maintenance_window_hour
     }
   }
 }
