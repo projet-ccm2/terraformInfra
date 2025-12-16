@@ -95,21 +95,15 @@ jobs:
         PROJECT_ID=$(grep "^project_id" ${{ inputs.var_file }} | awk '{print $3}' | tr -d '"' || echo "")
         ENV=$(grep "^env" ${{ inputs.var_file }} | awk '{print $3}' | tr -d '"' || echo "")
         if [ -n "$APP_NAME" ] && [ -n "$PROJECT_ID" ] && [ -n "$ENV" ]; then
-          # Calculate hash (same as Terraform will do)
-          HASH_INPUT="${PROJECT_ID}${ENV}${APP_NAME}"
-          HASH=$(echo -n "$HASH_INPUT" | sha256sum | cut -c1-16)
-          EXPECTED_BUCKET="gs://${APP_NAME}-${HASH}"
-          echo "Nom du bucket qui sera créé: $EXPECTED_BUCKET"
-          echo "  (basé sur le hash de: project_id=$PROJECT_ID, env=$ENV, app_name=$APP_NAME)"
+          echo "⚠️ Note: Le nom exact du bucket sera généré par Terraform avec random_id"
+          echo "  Pattern: ${APP_NAME}-<16-hex-chars>"
+          echo "  (random_id avec keepers: project_id=$PROJECT_ID, env=$ENV, app_name=$APP_NAME)"
           echo ""
-          echo "=== Vérification si ce bucket existe déjà ==="
-          if gsutil ls "$EXPECTED_BUCKET" >/dev/null 2>&1; then
-            echo "❌ ERREUR: Le bucket $EXPECTED_BUCKET existe déjà!"
-            echo "Liste des buckets similaires:"
-            gsutil ls gs://${APP_NAME}-* 2>&1 | head -10
-          else
-            echo "✅ Le bucket $EXPECTED_BUCKET n'existe pas encore (OK)"
-          fi
+          echo "=== Vérification des buckets similaires ==="
+          echo "Buckets existants commençant par ${APP_NAME}-:"
+          gsutil ls gs://${APP_NAME}-* 2>&1 | head -10 || echo "Aucun bucket trouvé avec ce préfixe"
+          echo ""
+          echo "💡 Le nom exact sera visible dans le plan Terraform"
         else
           echo "⚠️ Impossible d'extraire toutes les variables nécessaires"
           echo "APP_NAME=$APP_NAME"
@@ -223,6 +217,9 @@ jobs:
           -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
           -var-file=${{ inputs.var_file }} \
           -out=tfplan
+        echo ""
+        echo "=== Nom du bucket qui sera créé (depuis le plan) ==="
+        terraform show -json tfplan | jq -r '.planned_values.root_module.child_modules[] | select(.address == "module.bucket") | .resources[] | select(.type == "google_storage_bucket") | .values.name' 2>/dev/null || echo "Impossible d'extraire le nom du bucket du plan"
       working-directory: .
 
     - name: Terraform Apply

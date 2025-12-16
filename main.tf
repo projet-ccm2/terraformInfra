@@ -30,12 +30,22 @@ module "db" {
   depends_on     = [module.apis, module.vpc_network]
 }
 
+resource "random_id" "bucket_suffix" {
+  byte_length = 8
+  # Use keepers to make it deterministic per environment but unique globally
+  keepers = {
+    project_id = var.project_id
+    env        = var.env
+    app_name   = var.app_name
+  }
+}
+
 module "bucket" {
   source       = "./modules/bucket"
   project_id   = var.project_id
   region       = var.region
-  # Use hash of full project_id to ensure global uniqueness (bucket names are global across all GCP)
-  bucket_name = "${var.app_name}-${substr(sha256("${var.project_id}${var.env}${var.app_name}"), 0, 16)}"
+  # Use random_id with keepers: deterministic per environment, unique globally
+  bucket_name = "${var.app_name}-${random_id.bucket_suffix.hex}"
   enable_versioning = var.enable_bucket_versioning
   depends_on   = [module.apis]
 }
