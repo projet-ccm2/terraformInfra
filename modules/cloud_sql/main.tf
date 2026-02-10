@@ -11,9 +11,10 @@ resource "google_sql_database_instance" "db" {
       ipv4_enabled = var.public_ip
       private_network = var.public_ip ? null : var.private_network
       dynamic "authorized_networks" {
-        for_each = var.public_ip ? (length(var.authorized_networks) > 0 ? var.authorized_networks : ["0.0.0.0/0"]) : []
+        for_each = var.public_ip ? [1] : []
         content {
-          value = authorized_networks.value
+          name  = "allow-all"
+          value = "0.0.0.0/0"
         }
       }
     }
