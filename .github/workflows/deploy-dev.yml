@@ -1,0 +1,24 @@
+name: Deploy to Development
+
+concurrency:
+  group: terraform-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: dev
+      region: europe-west1
+      var_file: env/dev.tfvars
+      backend_prefix: streamquest/dev
+      instance_name: orders-dev
+      state_bucket: streamquest-dev-ccm2-terraform-states
+    secrets:
+      gcp_credentials: ${{ secrets.DEV_GCP_SA_KEY }}
+      project_id: ${{ secrets.DEV_GCP_PROJECT_ID }}
