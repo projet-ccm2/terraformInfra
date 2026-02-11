@@ -31,6 +31,6 @@ resource "google_project_service" "this" {
   project            = var.project_id
   service            = each.value
   disable_on_destroy = false
-  
+
   depends_on = [google_project_service.required]
 }
