@@ -1,4 +1,4 @@
-project_id = "streamquest-472309"
+project_id = "streamquest-dev-ccm2"
 region     = "europe-west1"
 app_name   = "orders"
 repo_id    = "orders"
@@ -20,4 +20,5 @@ enable_db_backups         = false
 enable_bucket_versioning  = false
 db_public_ip              = true
 db_authorized_networks    = []
+# db_activation_policy      = "ON_DEMAND"  # Par défaut, mais note: MySQL 8.0 ne supporte pas ON_DEMAND (seulement ALWAYS/NEVER)
 

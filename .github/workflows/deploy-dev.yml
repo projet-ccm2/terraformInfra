@@ -14,11 +14,11 @@ jobs:
     uses: ./.github/workflows/deploy.yml
     with:
       environment: dev
-      project_id: streamquest-472309
       region: europe-west1
       var_file: env/dev.tfvars
       backend_prefix: streamquest/dev
       instance_name: orders-dev
-      state_bucket: streamquest-472309-terraform-states
+      state_bucket: streamquest-dev-ccm2-terraform-states
     secrets:
       gcp_credentials: ${{ secrets.DEV_GCP_SA_KEY }}
+      project_id: ${{ secrets.DEV_GCP_PROJECT_ID }}

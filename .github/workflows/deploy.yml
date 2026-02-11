@@ -7,10 +7,6 @@ on:
         required: true
         type: string
         description: 'Environment name (dev, int, prod)'
-      project_id:
-        required: true
-        type: string
-        description: 'GCP Project ID'
       region:
         required: true
         type: string
@@ -40,6 +36,9 @@ on:
       gcp_credentials:
         required: true
         description: 'GCP service account credentials JSON'
+      project_id:
+        required: true
+        description: 'GCP Project ID'
 
 env:
   TF_VERSION: '1.6.0'
@@ -75,7 +74,7 @@ jobs:
     - name: Export ADC for Terraform
       run: |
         echo "GOOGLE_APPLICATION_CREDENTIALS=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
-        echo "PROJECT_ID=${{ inputs.project_id }}" >> $GITHUB_ENV
+        echo "PROJECT_ID=${{ secrets.project_id }}" >> $GITHUB_ENV
         echo "REGION=${{ inputs.region }}" >> $GITHUB_ENV
 
     - name: Validate inputs
@@ -86,13 +85,48 @@ jobs:
         fi
         echo "All inputs validated"
 
+    - name: List existing buckets and show bucket name to be created
+      run: |
+        echo "=== Buckets existants dans le projet ${{ secrets.project_id }} ==="
+        gsutil ls -p ${{ secrets.project_id }} 2>&1 | head -20 || echo "Aucun bucket trouvé ou erreur de permissions"
+        echo ""
+        echo "=== Extraction du nom du bucket depuis tfvars ==="
+        APP_NAME=$(grep "^app_name" ${{ inputs.var_file }} | awk '{print $3}' | tr -d '"' || echo "")
+        PROJECT_ID=$(grep "^project_id" ${{ inputs.var_file }} | awk '{print $3}' | tr -d '"' || echo "")
+        ENV=$(grep "^env" ${{ inputs.var_file }} | awk '{print $3}' | tr -d '"' || echo "")
+        if [ -n "$APP_NAME" ] && [ -n "$PROJECT_ID" ] && [ -n "$ENV" ]; then
+          # Calculate hash (same as Terraform will do)
+          HASH_INPUT="${PROJECT_ID}${ENV}${APP_NAME}"
+          HASH=$(echo -n "$HASH_INPUT" | sha256sum | cut -c1-32)
+          EXPECTED_BUCKET="gs://${APP_NAME}-${HASH}"
+          echo "Nom du bucket qui sera créé: $EXPECTED_BUCKET"
+          echo "  (hash SHA256 de: project_id=$PROJECT_ID, env=$ENV, app_name=$APP_NAME)"
+          echo ""
+          echo "=== Vérification si ce bucket existe déjà ==="
+          if gsutil ls "$EXPECTED_BUCKET" >/dev/null 2>&1; then
+            echo "❌ ERREUR: Le bucket $EXPECTED_BUCKET existe déjà dans GCP!"
+            echo "Ce bucket existe dans un autre projet GCP (les noms sont globaux)"
+          else
+            echo "✅ Le bucket $EXPECTED_BUCKET n'existe pas encore dans GCP (OK)"
+          fi
+          echo ""
+          echo "=== Vérification dans le state Terraform ==="
+          echo "Si le bucket existe dans le state mais pas dans GCP, il faudra le supprimer du state:"
+          echo "  terraform state rm module.bucket.google_storage_bucket.this"
+        else
+          echo "⚠️ Impossible d'extraire toutes les variables nécessaires"
+          echo "APP_NAME=$APP_NAME"
+          echo "PROJECT_ID=$PROJECT_ID"
+          echo "ENV=$ENV"
+        fi
+
     - name: Create Terraform state bucket if not exists
       run: |
         if gsutil ls -b gs://${{ inputs.state_bucket }} >/dev/null 2>&1; then
           echo "State bucket already exists: ${{ inputs.state_bucket }}"
         else
           echo "Creating state bucket: ${{ inputs.state_bucket }}"
-          gsutil mb -p ${{ inputs.project_id }} -l ${{ inputs.region }} -b on gs://${{ inputs.state_bucket }} || true
+          gsutil mb -p ${{ secrets.project_id }} -l ${{ inputs.region }} -b on gs://${{ inputs.state_bucket }} || true
         fi
 
     - name: Terraform Init
@@ -132,39 +166,39 @@ jobs:
         
         # Import VPC Network
         if gcloud compute networks describe ${{ env.VPC_NETWORK }} \
-          --project=${{ inputs.project_id }} \
+          --project=${{ secrets.project_id }} \
           --format="get(name)" >/dev/null 2>&1; then
           import_resource "VPC Network" \
-            "projects/${{ inputs.project_id }}/global/networks/${{ env.VPC_NETWORK }}" \
+            "projects/${{ secrets.project_id }}/global/networks/${{ env.VPC_NETWORK }}" \
             "module.vpc_network.google_compute_network.vpc"
         fi
 
         # Import VPC Subnet
         if gcloud compute networks subnets describe ${{ env.VPC_NETWORK }}-subnet \
           --region=${{ inputs.region }} \
-          --project=${{ inputs.project_id }} \
+          --project=${{ secrets.project_id }} \
           --format="get(name)" >/dev/null 2>&1; then
           import_resource "VPC Subnet" \
-            "projects/${{ inputs.project_id }}/regions/${{ inputs.region }}/subnetworks/${{ env.VPC_NETWORK }}-subnet" \
+            "projects/${{ secrets.project_id }}/regions/${{ inputs.region }}/subnetworks/${{ env.VPC_NETWORK }}-subnet" \
             "module.vpc_network.google_compute_subnetwork.subnet"
         fi
 
         # Import PSA Range
         import_resource "PSA Range" \
-          "projects/${{ inputs.project_id }}/global/addresses/${{ env.VPC_NETWORK }}-psa" \
+          "projects/${{ secrets.project_id }}/global/addresses/${{ env.VPC_NETWORK }}-psa" \
           "module.vpc_network.google_compute_global_address.psa_range"
 
         # Import Service Networking Connection
         import_resource "Service Networking Connection" \
-          "services/servicenetworking.googleapis.com:projects/${{ inputs.project_id }}/global/networks/${{ env.VPC_NETWORK }}" \
+          "services/servicenetworking.googleapis.com:projects/${{ secrets.project_id }}/global/networks/${{ env.VPC_NETWORK }}" \
           "module.vpc_network.google_service_networking_connection.private_vpc_connection"
 
         # Import Cloud SQL Instance
         if gcloud sql instances describe ${{ inputs.instance_name }} \
-          --project=${{ inputs.project_id }} \
+          --project=${{ secrets.project_id }} \
           --format="get(name)" >/dev/null 2>&1; then
           import_resource "Cloud SQL Instance" \
-            "${{ inputs.project_id }}/${{ inputs.instance_name }}" \
+            "${{ secrets.project_id }}/${{ inputs.instance_name }}" \
             "module.db.google_sql_database_instance.db"
         fi
 
@@ -174,11 +208,11 @@ jobs:
     - name: Disable deletion protection if needed
       run: |
         if gcloud sql instances describe ${{ inputs.instance_name }} \
-          --project=${{ inputs.project_id }} \
+          --project=${{ secrets.project_id }} \
           --format="get(settings.deletionProtectionEnabled)" 2>/dev/null | grep -q "True"; then
           echo "Disabling deletion protection on Cloud SQL instance: ${{ inputs.instance_name }}"
           gcloud sql instances patch ${{ inputs.instance_name }} \
-            --project=${{ inputs.project_id }} \
+            --project=${{ secrets.project_id }} \
             --no-deletion-protection || true
         else
           echo "Deletion protection already disabled or instance does not exist"
@@ -192,6 +226,9 @@ jobs:
           -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
           -var-file=${{ inputs.var_file }} \
           -out=tfplan
+        echo ""
+        echo "=== Nom du bucket qui sera créé (depuis le plan) ==="
+        terraform show -json tfplan | jq -r '.planned_values.root_module.child_modules[] | select(.address == "module.bucket") | .resources[] | select(.type == "google_storage_bucket") | .values.name' 2>/dev/null || echo "Impossible d'extraire le nom du bucket du plan"
       working-directory: .
 
     - name: Terraform Apply
@@ -217,11 +254,11 @@ jobs:
         
         # Disable deletion protection on Cloud SQL if enabled
         if gcloud sql instances describe ${{ inputs.instance_name }} \
-          --project=${{ inputs.project_id }} \
+          --project=${{ secrets.project_id }} \
           --format="get(settings.deletionProtectionEnabled)" 2>/dev/null | grep -q "True"; then
           echo "Disabling deletion protection on Cloud SQL instance"
           gcloud sql instances patch ${{ inputs.instance_name }} \
-            --project=${{ inputs.project_id }} \
+            --project=${{ secrets.project_id }} \
             --no-deletion-protection || true
         fi
         

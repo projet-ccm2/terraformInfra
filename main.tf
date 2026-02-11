@@ -26,6 +26,7 @@ module "db" {
   enable_backups = var.enable_db_backups
   public_ip      = var.db_public_ip
   authorized_networks = var.db_authorized_networks
+  activation_policy = var.db_activation_policy
   depends_on     = [module.apis, module.vpc_network]
 }
 
@@ -33,7 +34,9 @@ module "bucket" {
   source       = "./modules/bucket"
   project_id   = var.project_id
   region       = var.region
-  bucket_name  = "${var.app_name}-${var.project_id}-data"
+  # Use SHA256 hash (32 chars) of project_id+env+app_name for guaranteed global uniqueness
+  # This ensures the bucket name is unique across all GCP projects
+  bucket_name = "${var.app_name}-${substr(sha256("${var.project_id}${var.env}${var.app_name}"), 0, 32)}"
   enable_versioning = var.enable_bucket_versioning
   depends_on   = [module.apis]
 }

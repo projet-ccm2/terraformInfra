@@ -1,4 +1,4 @@
-project_id = "streamquest-prod"
+project_id = "streamquest-prod-ccm2"
 region     = "europe-west1"
 app_name   = "orders"
 repo_id    = "orders"
