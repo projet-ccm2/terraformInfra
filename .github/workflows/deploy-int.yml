@@ -1,0 +1,24 @@
+name: Deploy to Integration
+
+concurrency:
+  group: terraform-int-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: int
+      project_id: streamquest-472309
+      region: europe-west1
+      var_file: env/int.tfvars
+      backend_prefix: streamquest/int
+      instance_name: orders-int
+      state_bucket: streamquest-472309-terraform-states
+    secrets:
+      gcp_credentials: ${{ secrets.INT_GCP_SA_KEY }}
