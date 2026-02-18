@@ -12,7 +12,7 @@ resource "google_compute_subnetwork" "subnet" {
 }
 
 resource "google_vpc_access_connector" "serverless" {
-  name          = "${var.network_name}-connector"
+  name          = "${var.network_name}-conn"
   region        = var.region
   network       = google_compute_network.vpc.name
   ip_cidr_range = var.connector_cidr
