@@ -6,9 +6,16 @@ resource "google_compute_network" "vpc" {
 resource "google_compute_subnetwork" "subnet" {
   name          = "${var.network_name}-subnet"
   ip_cidr_range = var.cidr_block
-  region        = "europe-west1"
+  region        = var.region
   network       = google_compute_network.vpc.id
   private_ip_google_access = true
+}
+
+resource "google_vpc_access_connector" "serverless" {
+  name          = "${var.network_name}-conn"
+  region        = var.region
+  network       = google_compute_network.vpc.name
+  ip_cidr_range = var.connector_cidr
 }
 
 resource "google_compute_global_address" "psa_range" {

@@ -18,6 +18,6 @@ db = {
 
 enable_db_backups         = true
 enable_bucket_versioning  = false
-db_public_ip              = true
+db_public_ip              = false
 db_authorized_networks    = []
 
