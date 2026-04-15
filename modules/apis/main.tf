@@ -13,7 +13,8 @@ locals {
     "iam.googleapis.com",
     "compute.googleapis.com",
     "storage.googleapis.com",
-    "servicenetworking.googleapis.com"
+    "servicenetworking.googleapis.com",
+    "aiplatform.googleapis.com"
   ]
 }
 

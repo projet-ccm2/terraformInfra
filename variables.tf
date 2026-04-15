@@ -74,3 +74,8 @@ variable "db_activation_policy" {
   default     = "ALWAYS"
   description = "Cloud SQL activation policy: ALWAYS (always running, default), NEVER (stopped, requires manual activation), or ON_DEMAND (only for 1st gen instances, not MySQL 8.0)"
 }
+
+variable "ai_manager_sa_email" {
+  type        = string
+  description = "Email du service account utilisé par le Cloud Run ai-manager (pour le rôle Vertex AI)"
+}

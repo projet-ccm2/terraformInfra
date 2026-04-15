@@ -30,6 +30,14 @@ module "db" {
   depends_on     = [module.apis, module.vpc_network]
 }
 
+resource "google_project_iam_member" "ai_manager_vertex" {
+  project = var.project_id
+  role    = "roles/aiplatform.user"
+  member  = "serviceAccount:${var.ai_manager_sa_email}"
+
+  depends_on = [module.apis]
+}
+
 module "bucket" {
   source       = "./modules/bucket"
   project_id   = var.project_id
