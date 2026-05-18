@@ -41,7 +41,7 @@ on:
         description: 'GCP Project ID'
 
 env:
-  TF_VERSION: '1.6.0'
+  TF_VERSION: '1.10.5'
   TF_LOCK_TIMEOUT: '5m'
   VPC_NETWORK: ${{ inputs.network_name || 'streamquest-vpc-2' }}
 
@@ -76,6 +76,14 @@ jobs:
         echo "GOOGLE_APPLICATION_CREDENTIALS=${{ steps.auth.outputs.credentials_file_path }}" >> $GITHUB_ENV
         echo "PROJECT_ID=${{ secrets.project_id }}" >> $GITHUB_ENV
         echo "REGION=${{ inputs.region }}" >> $GITHUB_ENV
+
+    - name: Get default Compute Engine service account
+      id: get_sa
+      run: |
+        PROJECT_NUMBER=$(gcloud projects describe ${{ secrets.project_id }} --format='value(projectNumber)')
+        SA_EMAIL="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+        echo "sa_email=$SA_EMAIL" >> $GITHUB_OUTPUT
+        echo "Default Compute SA: $SA_EMAIL"
 
     - name: Validate inputs
       run: |
@@ -154,6 +162,7 @@ jobs:
           if terraform import -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
             -input=false \
             -var-file=${{ inputs.var_file }} \
+            -var="ai_manager_sa_email=${{ steps.get_sa.outputs.sa_email }}" \
             "$terraform_address" \
             "$resource_id" >/dev/null 2>&1; then
             echo "Successfully imported: $resource_type"
@@ -225,6 +234,7 @@ jobs:
         terraform plan \
           -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
           -var-file=${{ inputs.var_file }} \
+          -var="ai_manager_sa_email=${{ steps.get_sa.outputs.sa_email }}" \
           -out=tfplan
         echo ""
         echo "=== Nom du bucket qui sera créé (depuis le plan) ==="
@@ -268,7 +278,8 @@ jobs:
           -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
           -auto-approve \
           -input=false \
-          -var-file=${{ inputs.var_file }} || true
+          -var-file=${{ inputs.var_file }} \
+          -var="ai_manager_sa_email=${{ steps.get_sa.outputs.sa_email }}" || true
       working-directory: .
 
     - name: Deployment Summary
