@@ -41,7 +41,7 @@ on:
         description: 'GCP Project ID'
 
 env:
-  TF_VERSION: '1.6.0'
+  TF_VERSION: '1.10.5'
   TF_LOCK_TIMEOUT: '5m'
   VPC_NETWORK: ${{ inputs.network_name || 'streamquest-vpc-2' }}
 
