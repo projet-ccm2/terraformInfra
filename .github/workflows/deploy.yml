@@ -42,7 +42,7 @@ on:
 
 env:
   TF_VERSION: '1.10.5'
-  TF_LOCK_TIMEOUT: '5m'
+  TF_LOCK_TIMEOUT: '30s'
   VPC_NETWORK: ${{ inputs.network_name || 'streamquest-vpc-2' }}
 
 jobs:
@@ -150,19 +150,61 @@ jobs:
     - name: Force-unlock stale state lock if present
       continue-on-error: true
       run: |
-        LOCK_PATH="gs://${{ inputs.state_bucket }}/${{ inputs.backend_prefix }}/default.tflock"
-        LOCK_INFO=$(gsutil cat "$LOCK_PATH" 2>/dev/null || echo "")
-        if [ -n "$LOCK_INFO" ]; then
-          LOCK_ID=$(echo "$LOCK_INFO" | jq -r '.ID' 2>/dev/null || echo "")
-          if [ -n "$LOCK_ID" ] && [ "$LOCK_ID" != "null" ]; then
-            echo "Stale lock detected (ID: $LOCK_ID) — forcing unlock"
-            terraform force-unlock -force "$LOCK_ID" || true
-          else
-            echo "Lock file present but ID unparseable — skipping"
+        set +e
+        PREFIX_PATH="gs://${{ inputs.state_bucket }}/${{ inputs.backend_prefix }}"
+
+        echo "=== Objects in state prefix ==="
+        gsutil ls "${PREFIX_PATH}/" 2>&1 || true
+        echo ""
+
+        unlock_via_file() {
+          # For the GCS backend, `terraform force-unlock` expects the GCS
+          # object generation number (numeric), NOT the UUID stored in the
+          # lock file's JSON ".ID" field. gsutil stat exposes the generation.
+          local path="$1"
+          local gen
+          gen=$(gsutil stat "$path" 2>/dev/null | awk '/Generation:/ {print $2}')
+          if [ -z "$gen" ]; then
+            return 1
           fi
-        else
-          echo "No stale lock file present"
-        fi
+          echo "Found lock at $path (generation: $gen) — forcing unlock"
+          terraform force-unlock -force "$gen" || true
+          return 0
+        }
+
+        # File-based detection at the standard GCS backend lock path
+        unlock_via_file "${PREFIX_PATH}/default.tflock"
+
+        # Probe via terraform itself: catches any residual lock regardless of
+        # path/naming. -refresh=false keeps it fast.
+        for attempt in 1 2 3; do
+          echo "=== Lock probe attempt $attempt ==="
+          PROBE=$(terraform plan -lock-timeout=5s -input=false -refresh=false \
+            -var-file=${{ inputs.var_file }} \
+            -var="ai_manager_sa_email=${{ steps.get_sa.outputs.sa_email }}" 2>&1)
+          PROBE_EXIT=$?
+
+          if [ $PROBE_EXIT -eq 0 ]; then
+            echo "Probe clean — no lock"
+            break
+          fi
+
+          if echo "$PROBE" | grep -q "Error acquiring the state lock"; then
+            LOCK_ID=$(echo "$PROBE" | grep -oE 'ID:[[:space:]]+[a-f0-9-]+' | head -1 | awk '{print $NF}')
+            if [ -n "$LOCK_ID" ]; then
+              echo "Probe found lock (ID: $LOCK_ID) — forcing unlock"
+              terraform force-unlock -force "$LOCK_ID" || true
+              continue
+            fi
+            echo "Lock detected but ID unparseable:"
+            echo "$PROBE" | tail -20
+            break
+          fi
+
+          echo "Probe failed for non-lock reason — stopping unlock loop:"
+          echo "$PROBE" | tail -20
+          break
+        done
       working-directory: .
 
     - name: Import existing resources
