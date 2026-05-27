@@ -147,30 +147,57 @@ jobs:
           -upgrade
       working-directory: .
 
+    - name: Force-unlock stale state lock if present
+      continue-on-error: true
+      run: |
+        LOCK_PATH="gs://${{ inputs.state_bucket }}/${{ inputs.backend_prefix }}/default.tflock"
+        LOCK_INFO=$(gsutil cat "$LOCK_PATH" 2>/dev/null || echo "")
+        if [ -n "$LOCK_INFO" ]; then
+          LOCK_ID=$(echo "$LOCK_INFO" | jq -r '.ID' 2>/dev/null || echo "")
+          if [ -n "$LOCK_ID" ] && [ "$LOCK_ID" != "null" ]; then
+            echo "Stale lock detected (ID: $LOCK_ID) — forcing unlock"
+            terraform force-unlock -force "$LOCK_ID" || true
+          else
+            echo "Lock file present but ID unparseable — skipping"
+          fi
+        else
+          echo "No stale lock file present"
+        fi
+      working-directory: .
+
     - name: Import existing resources
       id: import
       continue-on-error: true
       run: |
         echo "Checking for existing resources to import..."
-        
+
+        # Snapshot of state at start (no lock needed, fast). Resources we add
+        # later in this step won't conflict with subsequent calls because each
+        # address is unique.
+        terraform state list 2>/dev/null > /tmp/tf_state_list || true
+
         import_resource() {
           local resource_type=$1
           local resource_id=$2
           local terraform_address=$3
-          
-          echo "Attempting to import: $resource_type"
-          if terraform import -lock-timeout=${{ env.TF_LOCK_TIMEOUT }} \
+
+          if grep -qE "^${terraform_address}$" /tmp/tf_state_list 2>/dev/null; then
+            echo "[skip] $resource_type already in state ($terraform_address)"
+            return 0
+          fi
+
+          echo "[import] $resource_type → $terraform_address"
+          if terraform import -lock-timeout=30s \
             -input=false \
             -var-file=${{ inputs.var_file }} \
             -var="ai_manager_sa_email=${{ steps.get_sa.outputs.sa_email }}" \
             "$terraform_address" \
-            "$resource_id" >/dev/null 2>&1; then
-            echo "Successfully imported: $resource_type"
-            return 0
+            "$resource_id"; then
+            echo "[ok] $resource_type"
           else
-            echo "Resource already managed or not found: $resource_type"
-            return 0
+            echo "[fail] $resource_type — see error above"
           fi
+          return 0
         }
         
         # Import VPC Network
