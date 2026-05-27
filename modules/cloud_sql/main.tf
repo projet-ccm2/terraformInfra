@@ -3,6 +3,8 @@ resource "google_sql_database_instance" "db" {
   project          = var.project_id
   region           = var.region
 
+  deletion_protection = false
+
   database_version = var.database_version
 
   settings {
