@@ -32,3 +32,4 @@ terraform.rc
 .terraform.lock.hcl
 .terraform
 .idea
+.claude/workspace/
